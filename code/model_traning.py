@@ -1,5 +1,5 @@
 """
-This code is used for parsing image data to table data and training four ML models(decicion tree, SVM, Random Forest and multilayer perceptron).
+This code is used for parsing image data to table data and training four ML models(decision tree, SVM, Random Forest and multilayer perceptron).
 """
 import csv
 import cv2
