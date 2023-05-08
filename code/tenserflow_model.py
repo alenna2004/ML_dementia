@@ -16,7 +16,7 @@ from tensorflow.keras.models import Sequential
 PATH = ''
 
 #here we taking our dataset from directory
-img_height, img_width = 208, 176
+img_height, img_width = 224, 224
 train_ds = tf.keras.utils.image_dataset_from_directory(
   '/content/drive/MyDrive/dementia/',
   validation_split=0.2,
@@ -42,8 +42,8 @@ train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
 val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
 
 
-#defining a model
-model = Sequential([
+#defining a sequential model
+model_seq = Sequential([
   layers.Rescaling(1./255, input_shape=(img_height, img_width, 1)),
   layers.Conv2D(16, 3, padding='same', activation='relu'),
   layers.MaxPooling2D(),
@@ -51,13 +51,47 @@ model = Sequential([
   layers.MaxPooling2D(),
   layers.Conv2D(64, 3, padding='same', activation='relu'),
   layers.MaxPooling2D(),
+  layers.Dropout(0.2),
   layers.Flatten(),
   layers.Dense(128, activation='relu'),
-  layers.Dense(num_classes)
+  layers.Dense(5)
 ])
 
 
-#compiling a model and training it
+#working with pretrained model resnet50
+def process(image,label):
+    image = tf.cast(image/255. ,tf.float32)
+    return image,label
+train_ds = train_ds.map(process)
+val_ds = val_ds.map(process)
+inputs = resnet.input
+x = resnet.output
+x = GlobalAveragePooling2D()(x)
+x = Dense(512, activation='relu')(x)
+x = Dropout(0.6)(x)
+outputs = Dense(5, activation ='softmax')(x)
+model_resnet = Model(inputs=inputs, outputs=outputs)
+
+
+#working with pretrained model mobilenet
+i = tf.keras.layers.Input([None, None, 3], dtype = tf.uint8)
+x = tf.cast(i, tf.float32)
+x = tf.keras.applications.mobilenet.preprocess_input(x)
+core = tf.keras.applications.MobileNet()
+x = core(x)
+model_mobilenet = tf.keras.Model(inputs=[i], outputs=[x])
+
+
+#working with pretrained model densenet
+i = tf.keras.layers.Input([None, None, 3], dtype = tf.uint8)
+x = tf.cast(i, tf.float32)
+x = tf.keras.applications.densenet.preprocess_input(x)
+core = tf.keras.applications.DenseNet201()
+x = core(x)
+model_densenet = tf.keras.Model(inputs=[i], outputs=[x])
+
+
+#compiling a model and training it, code bellow is the same for all models, replace "model" with apropriate model name 
 model.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001,beta_1=0.9, beta_2=0.999,epsilon=1e-07,),
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
